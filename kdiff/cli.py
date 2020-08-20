@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+import yaml
+import sys
+import difflib
+import click
+
+from colorama import Fore, Back, Style, init
+from prettytable import PrettyTable
+from pprint import pprint
+
+
+# Colour management
+if sys.stdout.isatty():
+    _COLOURS = True
+else:
+    _COLOURS = False
+yellow = Fore.YELLOW if _COLOURS else ""
+reset = Style.RESET_ALL if _COLOURS else ""
+green = Fore.GREEN if _COLOURS else ""
+red = Fore.RED if _COLOURS else ""
+
+
+class Resource():
+
+    def __init__(self, res):
+        self.kind = res.get('kind')
+        self.api = res.get('apiVersion')
+        self.name = res.get('metadata', {}).get('name') or res.get('metadata', {}).get('generateName')
+        self.annotations = res.get('metadata', {}).get('annotations', {})
+        if self.annotations is None:
+            self.annotations = {}
+
+        self.hook = self.annotations.get('argocd.argoproj.io/hook', "Live")
+        self.wave = self.annotations.get('argocd.argoproj.io/sync-wave', 0)
+
+        # res = self.cleanup(res)
+
+        self.manifest = res
+
+        self.id = f'{self.kind}-{self.api}-{self.name}'
+        self.id = f'{self.kind}-{self.name}'
+
+        # print(f'kubectl get -oyaml {self.kind} {self.name}')
+        # print(f'echo ---')
+
+    def cleanup(self, res):
+        res["metadata"]["annotations"] = {}
+        if "status" in res: del res["status"]
+        if "creationTimestamp" in res["metadata"]: del res["metadata"]["creationTimestamp"]
+        return res
+
+    def __dict__():
+        return self.manifest
+
+class Stack():
+
+    def __init__(self, path):
+
+        self.list = list()
+
+        if path == "-":
+            pipe = not sys.stdin.isatty()
+            if not pipe:
+                print("No data piped")
+                sys.exit()
+            data = ""
+            for line in sys.stdin:
+                data += line
+            data = yaml.safe_load_all(data)
+
+            for obj in data:
+                if obj == None:
+                    continue
+                self.list.append(Resource(obj))
+
+        else:
+            with open(path) as file:
+                data = yaml.safe_load_all(file)
+
+                for obj in data:
+                    if obj == None:
+                        continue
+                    self.list.append(Resource(obj))
+
+    def __dict__(self):
+        t = PrettyTable()
+        t.field_names = ["Hook", "Kind", "Name"]
+        for i in self.list:
+            print(f'{i.kind}-{i.api}-{i.name}')
+
+    @staticmethod
+    def comparer(a, b, listMode=False, verbose=False, filters=None, n=30000):
+
+
+
+        A = {r.id : r.manifest for r in a.list}
+        B = {r.id : r.manifest for r in b.list}
+
+        allres = sorted(set(list(A.keys())+list(B.keys())))
+
+        for res in allres:
+            if filters and not any(filter in res for filter in filters):
+                continue
+
+            if res in A and res in B:
+                s1 = yaml.dump(A.get(res))
+                s2 = yaml.dump(B.get(res))
+                mydiff = diff(s1,s2, n)
+                mydiff = color_diff(mydiff)
+                mydiff = ''.join(mydiff)
+                mydiff = mydiff.split('\n',3)[-1]
+
+                # if no diff...
+                if mydiff == "":
+                    verb = "Unchanged"
+                    if verbose:
+                        print(f'{yellow}### {verb} {res} ###{reset}')
+                        if not listMode:
+                            print(s1)
+                            print("---")
+
+                # if diff ...
+                if mydiff != "":
+                    verb = "Modified"
+                    print(f'{yellow}### {verb} {res} ###{reset}')
+                    if not listMode:
+                        print(mydiff)
+                        print("---")
+
+            elif res in A:
+                verb = "Removed"
+                print(f'{yellow}### {verb} {res} ###{reset}')
+                if not listMode:
+                    print(f'{red}{yaml.dump(A.get(res))}{reset}')
+                    print("---")
+
+            elif res in B:
+                verb = "Added"
+                print(f'{yellow}### {verb} {res} ###{reset}')
+                if not listMode:
+                    print(f'{green}{yaml.dump(B.get(res))}{reset}')
+                    print("---")
+
+
+def diff(a, b, n=30000):
+    a=a.splitlines(1)
+    b=b.splitlines(1)
+    diff=difflib.unified_diff(a, b, n=n)
+    return diff
+    return ''.join(diff)
+
+
+def color_diff(diff):
+    for line in diff:
+        if line.startswith('+'):
+            yield Fore.GREEN + line + Fore.RESET
+        elif line.startswith('-'):
+            yield Fore.RED + line + Fore.RESET
+        elif line.startswith('^'):
+            yield Fore.BLUE + line + Fore.RESET
+        else:
+            yield line
+
+@click.command()
+@click.option('--list', '-l', is_flag=True, default=False,help="list mode")
+@click.option('--verbose', '-v', is_flag=True, default=False,help="verbose mode")
+@click.option('--filter', '-f', multiple=True, help="filter mode")
+@click.option('--number', '-n', multiple=False, help="number of lines in diff", default=30000)
+@click.argument('a', nargs=1)
+@click.argument('b', nargs=1, default=False)
+def cli(a,b,filter,list,verbose, number):
+
+    sa = Stack(a)
+    sb = Stack(b) if b else sa
+
+    if not b:
+        verbose = True
+
+    Stack.comparer(sa, sb, listMode=list, verbose=verbose, filters=filter, n=number)
+
+if __name__ == '__main__':
+    cli()
