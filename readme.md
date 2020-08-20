@@ -1,10 +1,17 @@
 # Kdiff
 
+Essentialy a yaml differ, but K8s way.
+
 ## Install
 
 ```
-git clone https://github.com/johnmarcou/kdiff
-pip install -e kdiff
+pip install git+git://github.com/johnmarcou/kdiff
+```
+
+## Upgrade
+
+```
+pip install git+git://github.com/johnmarcou/kdiff --upgrade
 ```
 
 ## Example
@@ -19,8 +26,7 @@ pip install -e kdiff
    name: default
 ```
 
-## Upgrade
+## Uninstall
 ```
-cd kdiff
-git pull
+pip unsintall kdiff -y 
 ```
