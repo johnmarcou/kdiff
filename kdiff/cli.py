@@ -171,7 +171,7 @@ def color_diff(diff):
     "--number", "-n", multiple=False, help="number of lines in diff", default=30000
 )
 @click.argument("a", nargs=1)
-@click.argument("b", nargs=1, default=False)
+@click.argument("b", nargs=1, default="", required=False)
 def cli(a, b, filter, list, verbose, number):
 
     sa = Stack(a)
