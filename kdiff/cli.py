@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import yaml
+import os
+import glob
 import sys
 import difflib
 import click
@@ -77,13 +79,20 @@ class Stack:
                 self.list.append(Resource(obj))
 
         else:
-            with open(path) as file:
-                data = yaml.safe_load_all(file)
 
-                for obj in data:
-                    if obj == None:
-                        continue
-                    self.list.append(Resource(obj))
+            paths = (
+                sorted(glob.glob(os.path.join(path, "*")))
+                if os.path.isdir(path)
+                else [path]
+            )
+            for path in paths:
+                with open(path) as file:
+                    data = yaml.safe_load_all(file)
+
+                    for obj in data:
+                        if obj == None:
+                            continue
+                        self.list.append(Resource(obj))
 
     def __dict__(self):
         t = PrettyTable()
