@@ -5,6 +5,7 @@ import glob
 import sys
 import difflib
 import click
+import base64
 
 from colorama import Fore, Back, Style, init
 from prettytable import PrettyTable
@@ -92,6 +93,12 @@ class Stack:
                     for obj in data:
                         if obj == None:
                             continue
+                        # Decode secret base64
+                        if obj.get("kind") == "Secret":
+                            stringData = obj.get("stringData", {})
+                            for k, v in obj["data"].items():
+                                stringData[k] = base64.b64decode(v).decode("utf-8")
+                            obj["stringData"] = stringData
                         self.list.append(Resource(obj))
 
     def __dict__(self):
