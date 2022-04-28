@@ -96,9 +96,13 @@ class Stack:
                         # Decode secret base64
                         if obj.get("kind") == "Secret":
                             stringData = obj.get("stringData", {})
-                            for k, v in obj.get("data", {}).items():
+                            data = obj.get("data", {}) or {}
+                            for k, v in data.items():
                                 if v is not None:
-                                    stringData[k] = base64.b64decode(v).decode("utf-8")
+                                    try:
+                                        stringData[k] = base64.b64decode(v).decode("utf-8")
+                                    except:
+                                        pass
                             obj["stringData"] = stringData
                         self.list.append(Resource(obj))
 
