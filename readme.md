@@ -5,13 +5,13 @@ Essentialy a yaml differ, but K8s way.
 ## Install
 
 ```
-pip install git+git://github.com/johnmarcou/kdiff
+pip install git+https://github.com/johnmarcou/kdiff
 ```
 
 ## Upgrade
 
 ```
-pip install git+git://github.com/johnmarcou/kdiff --upgrade
+pip install git+https://github.com/johnmarcou/kdiff --upgrade
 ```
 
 ## Example
