@@ -11,6 +11,8 @@ from colorama import Fore, Back, Style, init
 from prettytable import PrettyTable
 from pprint import pprint
 
+# Hack from https://github.com/yaml/pyyaml/issues/683#issuecomment-1371681056
+del(yaml.resolver.Resolver.yaml_implicit_resolvers['='])
 
 # Colour management
 if sys.stdout.isatty():
