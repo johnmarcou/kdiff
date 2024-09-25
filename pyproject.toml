@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "kdiff"
+version = "0.1.0"
+description = ""
+authors = ["John Marcou <john.marcou@minaprotocol.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+click = "^8.1.7"
+colorama = "^0.4.6"
+prettytable = "^3.11.0"
+oyaml = "^1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
