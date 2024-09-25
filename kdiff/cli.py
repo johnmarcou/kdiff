@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-import yaml
-import os
-import glob
-import sys
-import difflib
-import click
 import base64
-
-from colorama import Fore, Back, Style, init
-from prettytable import PrettyTable
+import difflib
+import glob
+import os
+import sys
 from pprint import pprint
 
+import click
+import yaml
+from colorama import Back, Fore, Style, init
+from prettytable import PrettyTable
+
 # Hack from https://github.com/yaml/pyyaml/issues/683#issuecomment-1371681056
-del(yaml.resolver.Resolver.yaml_implicit_resolvers['='])
+del yaml.resolver.Resolver.yaml_implicit_resolvers["="]
 
 # Colour management
 if sys.stdout.isatty():
@@ -26,7 +26,7 @@ red = Fore.RED if _COLOURS else ""
 
 
 class Resource:
-    def __init__(self, res):
+    def __init__(self, res, labels):
         self.kind = res.get("kind")
         self.api = res.get("apiVersion")
         self.name = res.get("metadata", {}).get("name") or res.get("metadata", {}).get(
@@ -43,6 +43,13 @@ class Resource:
 
         self.manifest = res
 
+        if labels:
+            resLabels = res["metadata"].get("labels") or {}
+            self.manifest["metadata"]["labels"] = resLabels
+            for label in labels:
+                key, value = label.split("=")
+                self.manifest["metadata"]["labels"][key] = value
+
         self.id = f"{self.kind}-{self.api}-{self.name}"
         self.id = f"{self.kind}-{self.name}"
 
@@ -57,12 +64,12 @@ class Resource:
             del res["metadata"]["creationTimestamp"]
         return res
 
-    def __dict__():
+    def __dict__(self):
         return self.manifest
 
 
 class Stack:
-    def __init__(self, path):
+    def __init__(self, path, labels):
 
         self.list = list()
 
@@ -79,7 +86,7 @@ class Stack:
             for obj in data:
                 if obj == None:
                     continue
-                self.list.append(Resource(obj))
+                self.list.append(Resource(obj, labels))
 
         else:
 
@@ -102,7 +109,7 @@ class Stack:
                                 if v is not None:
                                     stringData[k] = base64.b64decode(v).decode("utf-8")
                             obj["stringData"] = stringData
-                        self.list.append(Resource(obj))
+                        self.list.append(Resource(obj, labels))
 
     def __dict__(self):
         t = PrettyTable()
@@ -185,16 +192,19 @@ def color_diff(diff):
 @click.command()
 @click.option("--list", "-l", is_flag=True, default=False, help="list mode")
 @click.option("--verbose", "-v", is_flag=True, default=False, help="verbose mode")
+@click.option(
+    "--labels", "-L", multiple=True, help="add labels, e.g. -L label=value", default={}
+)
 @click.option("--filter", "-f", multiple=True, help="filter mode")
 @click.option(
     "--number", "-n", multiple=False, help="number of lines in diff", default=30000
 )
 @click.argument("a", nargs=1)
 @click.argument("b", nargs=1, default="", required=False)
-def cli(a, b, filter, list, verbose, number):
+def cli(a, b, filter, list, verbose, number, labels):
 
-    sa = Stack(a)
-    sb = Stack(b) if b else sa
+    sa = Stack(a, labels)
+    sb = Stack(b, labels) if b else sa
 
     if not b:
         verbose = True
