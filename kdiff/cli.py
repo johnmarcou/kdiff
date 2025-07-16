@@ -119,7 +119,14 @@ class Stack:
 
     @staticmethod
     def comparer(
-        a, b, ignore_argocd=False, listMode=False, verbose=False, filters=None, n=30000
+        a,
+        b,
+        debug=False,
+        ignore_argocd=False,
+        listMode=False,
+        verbose=False,
+        filters=None,
+        n=30000,
     ):
 
         A = {r.id: r.manifest for r in a.list}
@@ -134,11 +141,14 @@ class Stack:
             if res in A and res in B:
                 res1 = A.get(res)
                 res2 = B.get(res)
+                if debug:
+                    print(res1)
+                    print(res2)
                 if ignore_argocd:
-                    res1.get("metadata", {}).get("annotations", {}).pop(
+                    (res1.get("metadata", {}).get("annotations", {}) or {}).pop(
                         "argocd.argoproj.io/tracking-id", None
                     )
-                    res2.get("metadata", {}).get("annotations", {}).pop(
+                    (res2.get("metadata", {}).get("annotations", {}) or {}).pop(
                         "argocd.argoproj.io/tracking-id", None
                     )
                 s1 = yaml.dump(res1)
@@ -201,11 +211,12 @@ def color_diff(diff):
 
 @click.command()
 @click.option("--list", "-l", is_flag=True, default=False, help="list mode")
+@click.option("--debug", "-d", is_flag=True, default=False, help="debug mode")
 @click.option(
-    "--ignore-argocd",
+    "--ignore-argocd/--no-ignore-argocd",
     "-i",
     is_flag=True,
-    default=False,
+    default=True,
     help="ignore ArgoCD tracking annotations",
 )
 @click.option("--verbose", "-v", is_flag=True, default=False, help="verbose mode")
@@ -218,7 +229,7 @@ def color_diff(diff):
 )
 @click.argument("a", nargs=1)
 @click.argument("b", nargs=1, default="", required=False)
-def cli(a, b, filter, ignore_argocd, list, verbose, number, labels):
+def cli(a, b, debug, filter, ignore_argocd, list, verbose, number, labels):
 
     sa = Stack(a, labels)
     sb = Stack(b, labels) if b else sa
@@ -229,6 +240,7 @@ def cli(a, b, filter, ignore_argocd, list, verbose, number, labels):
     Stack.comparer(
         sa,
         sb,
+        debug=debug,
         ignore_argocd=ignore_argocd,
         listMode=list,
         verbose=verbose,
