@@ -118,7 +118,9 @@ class Stack:
             print(f"{i.kind}-{i.api}-{i.name}")
 
     @staticmethod
-    def comparer(a, b, listMode=False, verbose=False, filters=None, n=30000):
+    def comparer(
+        a, b, ignore_argocd=False, listMode=False, verbose=False, filters=None, n=30000
+    ):
 
         A = {r.id: r.manifest for r in a.list}
         B = {r.id: r.manifest for r in b.list}
@@ -130,8 +132,17 @@ class Stack:
                 continue
 
             if res in A and res in B:
-                s1 = yaml.dump(A.get(res))
-                s2 = yaml.dump(B.get(res))
+                res1 = A.get(res)
+                res2 = B.get(res)
+                if ignore_argocd:
+                    res1.get("metadata", {}).get("annotations", {}).pop(
+                        "argocd.argoproj.io/tracking-id", None
+                    )
+                    res2.get("metadata", {}).get("annotations", {}).pop(
+                        "argocd.argoproj.io/tracking-id", None
+                    )
+                s1 = yaml.dump(res1)
+                s2 = yaml.dump(res2)
                 mydiff = diff(s1, s2, n)
                 mydiff = color_diff(mydiff)
                 mydiff = "".join(mydiff)
@@ -174,7 +185,6 @@ def diff(a, b, n=30000):
     b = b.splitlines(1)
     diff = difflib.unified_diff(a, b, n=n)
     return diff
-    return "".join(diff)
 
 
 def color_diff(diff):
@@ -191,6 +201,13 @@ def color_diff(diff):
 
 @click.command()
 @click.option("--list", "-l", is_flag=True, default=False, help="list mode")
+@click.option(
+    "--ignore-argocd",
+    "-i",
+    is_flag=True,
+    default=False,
+    help="ignore ArgoCD tracking annotations",
+)
 @click.option("--verbose", "-v", is_flag=True, default=False, help="verbose mode")
 @click.option(
     "--labels", "-L", multiple=True, help="add labels, e.g. -L label=value", default={}
@@ -201,7 +218,7 @@ def color_diff(diff):
 )
 @click.argument("a", nargs=1)
 @click.argument("b", nargs=1, default="", required=False)
-def cli(a, b, filter, list, verbose, number, labels):
+def cli(a, b, filter, ignore_argocd, list, verbose, number, labels):
 
     sa = Stack(a, labels)
     sb = Stack(b, labels) if b else sa
@@ -209,7 +226,15 @@ def cli(a, b, filter, list, verbose, number, labels):
     if not b:
         verbose = True
 
-    Stack.comparer(sa, sb, listMode=list, verbose=verbose, filters=filter, n=number)
+    Stack.comparer(
+        sa,
+        sb,
+        ignore_argocd=ignore_argocd,
+        listMode=list,
+        verbose=verbose,
+        filters=filter,
+        n=number,
+    )
 
 
 if __name__ == "__main__":
