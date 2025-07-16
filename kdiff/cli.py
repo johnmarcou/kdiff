@@ -107,7 +107,12 @@ class Stack:
                             stringData = obj.get("stringData", {})
                             for k, v in obj.get("data", {}).items():
                                 if v is not None:
-                                    stringData[k] = base64.b64decode(v).decode("utf-8")
+                                    try:
+                                        stringData[k] = base64.b64decode(v).decode(
+                                            "utf-8"
+                                        )
+                                    except:
+                                        pass
                             obj["stringData"] = stringData
                         self.list.append(Resource(obj, labels))
 
